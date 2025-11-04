@@ -4,6 +4,18 @@
 const apiBase = (import.meta?.env?.VITE_API_BASE || '').replace(/\/$/, '');
 const socketUrl = (import.meta?.env?.VITE_SOCKET_URL || '').trim();
 
+// Warn in production builds if envs are missing. This helps detect misconfigured deployments.
+if (typeof window !== 'undefined' && import.meta?.env?.PROD) {
+  if (!apiBase) {
+    // eslint-disable-next-line no-console
+    console.warn('[config] VITE_API_BASE is empty; frontend will call same-origin /api which will fail on Vercel.');
+  }
+  if (!socketUrl) {
+    // eslint-disable-next-line no-console
+    console.warn('[config] VITE_SOCKET_URL is empty; Socket.IO will try same-origin, which is likely wrong in production.');
+  }
+}
+
 export function getApiBase() {
   return apiBase || '';
 }
