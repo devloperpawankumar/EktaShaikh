@@ -15,7 +15,11 @@ pnpm-debug.log*
 coverage/
 
 # Runtime/uploads
-uploads/
+# Keep the uploads directory in the repo (with optional seeded files),
+# but ignore newly generated runtime uploads.
+uploads/*
+!uploads/.gitkeep
+!uploads/seed/**
 .cache/
 
 # Editor/OS
