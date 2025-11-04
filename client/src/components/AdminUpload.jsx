@@ -70,7 +70,13 @@ export default function AdminUpload() {
         const fileInput = document.querySelector('input[type="file"]')
         if (fileInput) fileInput.value = ''
       } else {
-        alert('Upload failed')
+        try {
+          const err = await response.json()
+          alert(`Upload failed: ${err?.error || err?.message || response.statusText}`)
+        } catch {
+          const text = await response.text().catch(() => '')
+          alert(`Upload failed: ${text || response.statusText}`)
+        }
       }
     } catch (error) {
       console.error('Upload error:', error)

@@ -7,6 +7,7 @@ import VoiceMessage from '../models/VoiceMessage.js';
 import { transcribeFileWithAssemblyAI, detectLanguageWithAssemblyAI, formatCinematicTranscript } from '../services/transcription.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
+import { uploadAudioFile } from '../services/cloudinary.js';
 
 const router = express.Router();
 
@@ -85,7 +86,18 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
     }
   }
 
-  const audioUrl = `/uploads/${finalFilename}`;
+  // Prefer Cloudinary if configured; fallback to local /uploads
+  let audioUrl = `/uploads/${finalFilename}`;
+  try {
+    const candidatePath = path.resolve('uploads', finalFilename);
+    const uploaded = await uploadAudioFile(candidatePath, { publicId: path.basename(finalFilename, path.extname(finalFilename)) });
+    if (uploaded && uploaded.secure_url) {
+      audioUrl = uploaded.secure_url;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Cloudinary upload failed or not configured, using local file:', e?.message || e);
+  }
   const doc = await VoiceMessage.create({
     title: title || 'Untitled Message',
     audioUrl,
@@ -126,6 +138,9 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
     }
   }
 
+  // Best-effort cleanup after transcription
+  try { fs.unlinkSync(path.resolve('uploads', finalFilename)); } catch {}
+
   res.status(201).json(doc);
 });
 
@@ -163,7 +178,18 @@ router.post('/upload-dial', upload.single('audio'), async (req, res) => {
     }
   }
 
-  const audioUrl = `/uploads/${finalFilename}`;
+  // Prefer Cloudinary if configured; fallback to local /uploads
+  let audioUrl = `/uploads/${finalFilename}`;
+  try {
+    const candidatePath = path.resolve('uploads', finalFilename);
+    const uploaded = await uploadAudioFile(candidatePath, { publicId: path.basename(finalFilename, path.extname(finalFilename)) });
+    if (uploaded && uploaded.secure_url) {
+      audioUrl = uploaded.secure_url;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Cloudinary upload failed for dial upload, using local file:', e?.message || e);
+  }
   const doc = await VoiceMessage.create({
     title: title || 'Dial Recording',
     audioUrl,
@@ -173,6 +199,8 @@ router.post('/upload-dial', upload.single('audio'), async (req, res) => {
     phoneNumber: phoneNumber || undefined,
   });
 
+  // Best-effort cleanup after upload
+  try { fs.unlinkSync(path.resolve('uploads', finalFilename)); } catch {}
   res.status(201).json(doc);
 });
 
