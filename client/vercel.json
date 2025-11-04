@@ -11,6 +11,7 @@
   "outputDirectory": "dist",
   "routes": [
     { "src": "/api/(.*)", "dest": "https://digitalbooth.onrender.com/api/$1" },
+    { "src": "/uploads/(.*)", "dest": "https://digitalbooth.onrender.com/uploads/$1" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|ico|txt|webm|mp3|wav|m4a|ogg)", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
