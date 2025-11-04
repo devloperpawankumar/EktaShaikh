@@ -5,6 +5,8 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import VoiceMessage from '../models/VoiceMessage.js';
 import { transcribeFileWithAssemblyAI, detectLanguageWithAssemblyAI, formatCinematicTranscript } from '../services/transcription.js';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
 
 const router = express.Router();
 
@@ -26,6 +28,11 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+// Configure ffmpeg binary path
+if (ffmpegStatic) {
+  ffmpeg.setFfmpegPath(ffmpegStatic);
+}
 
 // List messages (with transcript preview)
 router.get('/', async (req, res) => {
@@ -49,7 +56,36 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
 
   const { title, durationSeconds, transcript, type, phoneNumber, autoTranscribe } = req.body;
 
-  const audioUrl = `/uploads/${req.file.filename}`;
+  const originalFilename = req.file.filename;
+  const originalPath = path.resolve('uploads', originalFilename);
+  let finalFilename = originalFilename;
+
+  // If uploaded format is potentially unsupported (e.g., .webm/.ogg), create an MP3 alongside and prefer it
+  const ext = (path.extname(originalFilename) || '').toLowerCase();
+  const shouldTranscodeToMp3 = ['.webm', '.ogg', '.mkv', '.mov'].includes(ext);
+  if (shouldTranscodeToMp3) {
+    try {
+      const mp3Filename = `${path.basename(originalFilename, ext)}.mp3`;
+      const mp3Path = path.resolve('uploads', mp3Filename);
+      // Only transcode if target doesn't exist yet
+      if (!fs.existsSync(mp3Path)) {
+        await new Promise((resolve, reject) => {
+          ffmpeg(originalPath)
+            .audioCodec('libmp3lame')
+            .format('mp3')
+            .on('error', (err) => reject(err))
+            .on('end', () => resolve())
+            .save(mp3Path);
+        });
+      }
+      finalFilename = mp3Filename;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('MP3 transcode failed, keeping original file:', err);
+    }
+  }
+
+  const audioUrl = `/uploads/${finalFilename}`;
   const doc = await VoiceMessage.create({
     title: title || 'Untitled Message',
     audioUrl,
@@ -101,7 +137,33 @@ router.post('/upload-dial', upload.single('audio'), async (req, res) => {
 
   const { title, durationSeconds, transcript, phoneNumber } = req.body;
 
-  const audioUrl = `/uploads/${req.file.filename}`;
+  const originalFilename = req.file.filename;
+  const originalPath = path.resolve('uploads', originalFilename);
+  let finalFilename = originalFilename;
+  const ext = (path.extname(originalFilename) || '').toLowerCase();
+  const shouldTranscodeToMp3 = ['.webm', '.ogg', '.mkv', '.mov'].includes(ext);
+  if (shouldTranscodeToMp3) {
+    try {
+      const mp3Filename = `${path.basename(originalFilename, ext)}.mp3`;
+      const mp3Path = path.resolve('uploads', mp3Filename);
+      if (!fs.existsSync(mp3Path)) {
+        await new Promise((resolve, reject) => {
+          ffmpeg(originalPath)
+            .audioCodec('libmp3lame')
+            .format('mp3')
+            .on('error', (err) => reject(err))
+            .on('end', () => resolve())
+            .save(mp3Path);
+        });
+      }
+      finalFilename = mp3Filename;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('MP3 transcode failed for dial upload, keeping original:', err);
+    }
+  }
+
+  const audioUrl = `/uploads/${finalFilename}`;
   const doc = await VoiceMessage.create({
     title: title || 'Dial Recording',
     audioUrl,
@@ -112,6 +174,46 @@ router.post('/upload-dial', upload.single('audio'), async (req, res) => {
   });
 
   res.status(201).json(doc);
+});
+
+// On-the-fly stream transcode to MP3 for unsupported formats
+// GET /api/messages/stream?file=/uploads/<filename>
+router.get('/stream', async (req, res) => {
+  try {
+    const fileParam = req.query.file;
+    if (!fileParam || !fileParam.startsWith('/uploads/')) {
+      return res.status(400).json({ error: 'Invalid file parameter' });
+    }
+    const requestedPath = path.resolve('.', fileParam.replace(/^\//, ''));
+    if (!requestedPath.startsWith(path.resolve('uploads'))) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+    if (!fs.existsSync(requestedPath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Stream via ffmpeg transcoding pipeline
+    ffmpeg(requestedPath)
+      .audioCodec('libmp3lame')
+      .format('mp3')
+      .on('error', (err) => {
+        // eslint-disable-next-line no-console
+        console.error('Stream transcode error:', err);
+        if (!res.headersSent) {
+          res.status(500).end('Transcode failed');
+        } else {
+          try { res.destroy(); } catch {}
+        }
+      })
+      .pipe(res, { end: true });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Stream endpoint error:', err);
+    res.status(500).json({ error: 'Failed to stream audio' });
+  }
 });
 
 // Retrieve one

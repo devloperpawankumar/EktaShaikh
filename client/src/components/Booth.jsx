@@ -468,8 +468,26 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
         audioRef.current.pause()
         audioRef.current.currentTime = 0
         
-        // Make audio URL absolute if it's relative
-        const audioUrl = withApiBase(item.audioUrl)
+        // Make audio URL absolute if it's relative and resolve a browser-playable fallback if needed
+        let audioUrl = withApiBase(item.audioUrl)
+        if (audioRef.current) {
+          try {
+            const canPlayWebm = audioRef.current.canPlayType && audioRef.current.canPlayType('audio/webm; codecs="vorbis"')
+            const canPlayMp3 = audioRef.current.canPlayType && audioRef.current.canPlayType('audio/mpeg')
+            const isWebm = /\.webm($|\?)/i.test(audioUrl)
+            if (isWebm && !canPlayWebm) {
+              // Try a sibling MP3 next to the WEBM (server converts on upload)
+              const mp3Candidate = audioUrl.replace(/\.webm(\?|$)/i, '.mp3$1')
+              if (canPlayMp3) {
+                audioUrl = mp3Candidate
+              } else {
+                // Fallback to on-the-fly stream transcode endpoint
+                const fileParam = encodeURIComponent(item.audioUrl)
+                audioUrl = withApiBase(`/api/messages/stream?file=${fileParam}`)
+              }
+            }
+          } catch {}
+        }
         
         
         // Set the source and play immediately
