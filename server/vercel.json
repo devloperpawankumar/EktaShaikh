@@ -1,0 +1,5 @@
+{
+  "version": 2,
+  "ignoreCommand": "echo 'Server not deployed on Vercel (needs WebSockets + persistent storage)'; exit 0"
+}
+

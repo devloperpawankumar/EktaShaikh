@@ -1,0 +1,34 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node / PNPM / NPM
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Env files
+.env
+.env.*
+
+# Vercel / build caches
+.vercel/
+
+# Project outputs (monorepo paths)
+client/dist/
+server/uploads/
+server/.cache/
+
+# Logs & coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+coverage/
+
+
