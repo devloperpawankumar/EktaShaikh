@@ -12,7 +12,33 @@ const AdminUpload = lazy(() => import('./components/AdminUpload.jsx'))
 import Tabs from './components/shared/Tabs.jsx'
 import DialLoader from './components/shared/DialLoader.jsx'
 
+function useEnableSoundOnce() {
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext
+        if (Ctx) {
+          const ctx = new Ctx()
+          if (ctx.state === 'suspended') {
+            await ctx.resume()
+          }
+          try { await ctx.close() } catch {}
+        }
+      } catch {}
+      window.removeEventListener('click', handler, { capture: true })
+      window.removeEventListener('touchstart', handler, { capture: true })
+    }
+    window.addEventListener('click', handler, { capture: true, once: true })
+    window.addEventListener('touchstart', handler, { capture: true, once: true })
+    return () => {
+      window.removeEventListener('click', handler, { capture: true })
+      window.removeEventListener('touchstart', handler, { capture: true })
+    }
+  }, [])
+}
+
 export default function App() {
+  useEnableSoundOnce()
   const location = useLocation()
   const navigate = useNavigate()
   const socketRef = useRef(null)
