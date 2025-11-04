@@ -872,33 +872,54 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
             muted={false}
             volume={1.0}
             onError={(e) => {
-              console.error('Audio element error:', e)
-              console.error('Audio src:', e.target.src)
-              console.error('Audio error details:', e.target.error)
-              
-              // Set user-friendly error message
-              let errorMessage = 'Failed to load audio file'
-              if (e.target.error) {
-                switch (e.target.error.code) {
-                  case e.target.error.MEDIA_ERR_ABORTED:
-                    errorMessage = 'Audio loading was aborted'
-                    break
-                  case e.target.error.MEDIA_ERR_NETWORK:
-                    errorMessage = 'Network error while loading audio'
-                    break
-                  case e.target.error.MEDIA_ERR_DECODE:
-                    errorMessage = 'Audio file format not supported'
-                    break
-                  case e.target.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                    errorMessage = 'Audio format not supported by browser'
-                    break
-                  default:
-                    errorMessage = 'Unknown audio error'
+              try {
+                console.error('Audio element error:', e)
+                console.error('Audio src:', e.target.src)
+                console.error('Audio error details:', e.target.error)
+
+                // Attempt a one-time fallback to streaming transcode if direct file fails
+                if (audioRef.current && !audioRef.current._fallbackTried) {
+                  audioRef.current._fallbackTried = true
+                  try {
+                    const current = messages[selectedIdx]
+                    const origFile = current?.audioUrl || (() => {
+                      try { return new URL(e.target.src).pathname } catch { return '' }
+                    })()
+                    if (origFile) {
+                      const streamUrl = withApiBase(`/api/messages/stream?file=${encodeURIComponent(origFile)}`)
+                      audioRef.current.src = streamUrl
+                      audioRef.current.muted = false
+                      audioRef.current.volume = 1.0
+                      audioRef.current.play().catch(() => {})
+                      return
+                    }
+                  } catch {}
                 }
-              }
-              setAudioError(errorMessage)
-              setIsPlaying(false)
-              setIsTranscribing(false)
+
+                // Set user-friendly error message if fallback not possible or also failed
+                let errorMessage = 'Failed to load audio file'
+                if (e.target.error) {
+                  switch (e.target.error.code) {
+                    case e.target.error.MEDIA_ERR_ABORTED:
+                      errorMessage = 'Audio loading was aborted'
+                      break
+                    case e.target.error.MEDIA_ERR_NETWORK:
+                      errorMessage = 'Network error while loading audio'
+                      break
+                    case e.target.error.MEDIA_ERR_DECODE:
+                      errorMessage = 'Audio file format not supported'
+                      break
+                    case e.target.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                      errorMessage = 'Audio format not supported by browser'
+                      break
+                    default:
+                      errorMessage = 'Unknown audio error'
+                  }
+                }
+                setAudioError(errorMessage)
+                setIsPlaying(false)
+                setIsTranscribing(false)
+              } catch {}
             }}
             onLoadStart={() => {}}
             onLoadedData={() => {}}
