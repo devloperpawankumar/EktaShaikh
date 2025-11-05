@@ -36,7 +36,9 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
   const [selectedIdx, setSelectedIdx] = useState(null)
   const audioRef = useRef(null)
   const [dialDigits, setDialDigits] = useState('')
+  const [dialNotice, setDialNotice] = useState('')
   const commitTimerRef = useRef(null)
+  const dialDigitsRef = useRef('')
   const { supported, listening, segments, start: startSTT, stop: stopSTT } = useWebSpeech({ lang: 'en-US', interimResults: true })
   const listRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -616,33 +618,97 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
     // Initialize audio context on first user interaction
     await initializeAudioContext()
     
-    // If there's no active reset timer and we still have leftover digits,
-    // clear them so a new selection starts fresh (prevents showing e.g. "29" before pressing 6)
-    if (!commitTimerRef.current && dialDigits) {
-      setDialDigits('')
+    const scheduleCommit = (delayMs = 1600) => {
+      if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+      commitTimerRef.current = setTimeout(() => {
+        const buf = dialDigitsRef.current
+        if (!buf) { commitTimerRef.current = null; return }
+        const parsed = parseInt(buf, 10)
+        if (Number.isNaN(parsed)) { commitTimerRef.current = null; return }
+
+        // Enforce 1–30
+        if (parsed < 1 || parsed > 30) {
+          setDialNotice('Only numbers 1–30 allowed')
+          setTimeout(() => setDialNotice(''), 1200)
+          commitTimerRef.current = null
+          return
+        }
+
+        const maxIndex = Math.min(30, messages.length)
+        if (maxIndex > 0) {
+          const oneBasedIndex = Math.max(1, Math.min(parsed, maxIndex))
+          const idx = oneBasedIndex - 1
+          playIndex(idx).catch((error) => {
+            console.error('Failed to play audio for index', idx, ':', error)
+          })
+        }
+
+        // Clear the display shortly after commit
+        setTimeout(() => {
+          setDialDigits('')
+          dialDigitsRef.current = ''
+          commitTimerRef.current = null
+        }, 900)
+      }, delayMs)
     }
 
-    // Restart/reset the commit timer on every digit; when it fires, it clears the buffer
-    if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
-    commitTimerRef.current = setTimeout(() => {
-      setDialDigits('')
-      commitTimerRef.current = null
-    }, 800)
-
     setDialDigits((prev) => {
+      // Block a third digit entirely
+      if (prev.length >= 2) {
+        setDialNotice('Max 2 digits (1–30)')
+        setTimeout(() => setDialNotice(''), 1200)
+        return prev
+      }
+
       const next = `${prev}${num}`
       const parsed = parseInt(next, 10)
-      if (!messages.length || Number.isNaN(parsed)) return next
-      const maxIndex = Math.min(30, messages.length)
-      const oneBasedIndex = Math.max(1, Math.min(parsed, maxIndex))
-      const idx = oneBasedIndex - 1
-      
-      // Immediately play the audio for the selected index
-      playIndex(idx).catch((error) => {
-        console.error('Failed to play audio for index', idx, ':', error)
-      })
-      
-      // Keep building digits as entered (display raw), playback is clamped
+
+      // If not a number yet, just show it
+      if (Number.isNaN(parsed)) {
+        dialDigitsRef.current = next
+        scheduleCommit(1100)
+        return next
+      }
+
+      // Enforce 1–30 while typing
+      if (parsed < 1) {
+        setDialNotice('Minimum is 1')
+        setTimeout(() => setDialNotice(''), 1200)
+        return prev
+      }
+      if (parsed > 30) {
+        setDialNotice('Only numbers 1–30 allowed')
+        setTimeout(() => setDialNotice(''), 1200)
+        return prev
+      }
+
+      // Update buffer
+      dialDigitsRef.current = next
+
+      // If two digits reached, commit immediately; otherwise, wait a bit for a possible second digit
+      if (next.length === 2) {
+        if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+        // Commit now using current buffer
+        const value = parsed
+        const maxIndex = Math.min(30, messages.length)
+        if (maxIndex > 0) {
+          const oneBasedIndex = Math.max(1, Math.min(value, maxIndex))
+          const idx = oneBasedIndex - 1
+          playIndex(idx).catch((error) => {
+            console.error('Failed to play audio for index', idx, ':', error)
+          })
+        }
+        // Clear shortly so the user sees the entered number
+        commitTimerRef.current = setTimeout(() => {
+          setDialDigits('')
+          dialDigitsRef.current = ''
+          commitTimerRef.current = null
+        }, 900)
+      } else {
+        // one digit: wait to see if a second digit comes in
+        scheduleCommit(1600)
+      }
+
       return next
     })
   }
@@ -813,6 +879,11 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
           <div className="mt-2 text-lg tracking-widest font-mono">
             {dialDigits || '—'}
           </div>
+          {dialNotice && (
+            <div className="mt-1 text-[12px] text-yellow-300 opacity-90">
+              {dialNotice}
+            </div>
+          )}
           <div className="mt-2 text-sm opacity-90">
             {selectedIdx !== null && messages[selectedIdx] ? (
               <div>

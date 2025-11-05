@@ -56,7 +56,7 @@ const RotaryDial = ({ onDigit, displayNumber, onPrev, onNext, onPlayPause, isPla
   ];
 
   const handleDialStart = (number, index) => {
-    if (isDialing || phoneNumber.length >= 10) return;
+    if (isDialing) return;
     
     setIsDialing(true);
     setCurrentHole(index);
@@ -79,10 +79,8 @@ const RotaryDial = ({ onDigit, displayNumber, onPrev, onNext, onPlayPause, isPla
       setRotation(0);
     }, 300);
     
-    // Add number to phone number
-    if (phoneNumber.length < 10) {
-      setPhoneNumber(prev => prev + number);
-    }
+    // Add number locally only for display; keep to last 2 digits
+    setPhoneNumber(prev => (prev + number).slice(-2));
 
     // Notify parent about the digit dialed
     if (onDigit) {
@@ -180,7 +178,7 @@ const RotaryDial = ({ onDigit, displayNumber, onPrev, onNext, onPlayPause, isPla
                     onMouseLeave={() => isDialing && handleDialEnd(item.number)}
                     onTouchStart={() => handleDialStart(item.number, index)}
                     onTouchEnd={() => handleDialEnd(item.number)}
-                    disabled={isDialing || phoneNumber.length >= 10}
+                    disabled={isDialing}
                   >
                     <div className="text-white text-center">
                       <div className="text-lg font-bold">{item.number}</div>
@@ -254,17 +252,11 @@ const RotaryDial = ({ onDigit, displayNumber, onPrev, onNext, onPlayPause, isPla
 
         {/* Status Indicator */}
         <div className="text-center mt-6">
-          <div className={`inline-flex items-center px-4 py-2 rounded-full ${
-            phoneNumber.length === 10 
-              ? 'bg-green-600 text-white' 
-              : 'bg-gray-700 text-gray-300'
-          }`}>
+          <div className={`inline-flex items-center px-4 py-2 rounded-full bg-gray-700 text-gray-300`}>
             <div className={`w-3 h-3 rounded-full mr-2 ${
-              isDialing ? 'bg-yellow-400 animate-pulse' : 
-              phoneNumber.length === 10 ? 'bg-green-400' : 'bg-gray-400'
+              isDialing ? 'bg-yellow-400 animate-pulse' : 'bg-gray-400'
             }`} />
-            {phoneNumber.length === 10 ? 'READY TO CALL' : 
-             isDialing ? 'DIALING...' : 'ENTER NUMBER'}
+            {isDialing ? 'DIALING...' : 'ENTER NUMBER'}
           </div>
         </div>
       </div>
