@@ -24,8 +24,10 @@ export default function Archive({ onReady }) {
         ])
         const dialData = await dialRes.json()
         const userData = await userRes.json()
-        setDialItems(dialData)
-        setUserItems(userData)
+        // Sort ascending by createdAt so earliest uploads appear first
+        const byOldestFirst = (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        setDialItems(Array.isArray(dialData) ? [...dialData].sort(byOldestFirst) : [])
+        setUserItems(Array.isArray(userData) ? [...userData].sort(byOldestFirst) : [])
       } finally {
         setLoading(false)
       }

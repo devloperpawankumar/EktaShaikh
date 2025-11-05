@@ -356,7 +356,9 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
         // Limit to 30 items at API level for faster loading
         const res = await fetch(withApiBase('/api/messages?type=dial&limit=30'))
         const data = await res.json()
-        setMessages(Array.isArray(data) ? data : [])
+        // Sort ascending by createdAt so dial index 1 is the earliest upload
+        const byOldestFirst = (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        setMessages(Array.isArray(data) ? [...data].sort(byOldestFirst) : [])
       } catch (error) {
         console.error('Failed to load messages:', error)
         setMessages([])
