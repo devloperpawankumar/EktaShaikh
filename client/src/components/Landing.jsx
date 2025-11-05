@@ -20,8 +20,8 @@ export default function Landing() {
           {/* <span className="text-[10px] md:text-xs px-2 py-1 rounded-sm border border-black/20 bg-black/5 select-none">XYZ</span> */}
         </div>
         {/* title */}
-        <h1 className="font-extrabold tracking-tight leading-none text-[44px] md:text-[64px]">
-          Phone Booth
+        <h1 className="font-extrabold tracking-tight leading-none text-[21px] md:text-[30px]">
+         Invite The One You Can't Touch
         </h1>
         {/* tabs row */}
         <div className="mt-3 flex items-center gap-2">
