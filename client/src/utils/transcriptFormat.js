@@ -54,12 +54,13 @@ export function formatCinematicTranscript({ words = [], text = '' }) {
 	for (let i = 0; i < words.length; i += 1) {
 		const w = words[i]
 		let token = convertStageTags(w?.text || '')
-		// Loudness styling: LOUD => ALL CAPS, soft => lowercase
-		if (w?.loudnessTag === 'LOUD') {
-			token = token.toUpperCase()
-		} else if (w?.loudnessTag === 'soft') {
-			token = token.toLowerCase()
-		}
+		// Remove loudness-based casing; keep original token casing
+		 // Loudness styling: LOUD => ALL CAPS, soft => lowercase
+		//  if (w?.loudnessTag === 'LOUD') {
+        //     token = token.toUpperCase()
+        // } else if (w?.loudnessTag === 'soft') {
+        //     token = token.toLowerCase()
+        // }
 		pushToken(currentLine, token)
 
 		const next = words[i + 1]

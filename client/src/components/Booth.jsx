@@ -159,26 +159,21 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
       'rap': 'Rapanui',
       'rar': 'Rarotongan',
       'mri': 'Maori',
-      'nau': 'Nauruan',
+
       'ton': 'Tongan',
       'fij': 'Fijian',
-      'hif': 'Fiji Hindi',
-      'tpi': 'Tok Pisin',
-      'bi': 'Bislama',
+    
+          
       'ho': 'Hiri Motu',
-      'tvl': 'Tuvaluan',
-      'wls': 'Wallisian',
-      'fut': 'Futunan',
-      'rap': 'Rapanui',
-      'rar': 'Rarotongan',
-      'mri': 'Maori',
-      'nau': 'Nauruan',
-      'ton': 'Tongan',
-      'fij': 'Fijian',
+    
+   
+
+    
+  
       'hif': 'Fiji Hindi',
       'tpi': 'Tok Pisin',
       'bi': 'Bislama',
-      'ho': 'Hiri Motu'
+      
     }
     return languageNames[code] || code.toUpperCase()
   }
@@ -628,18 +623,18 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
         const parsed = parseInt(buf, 10)
         if (Number.isNaN(parsed)) { commitTimerRef.current = null; return }
 
-        // Enforce 1–30
-        if (parsed < 1 || parsed > 30) {
-          setDialNotice('Only numbers 1–30 allowed')
+        // Enforce 0–29 (zero-based) and clamp to available messages
+        const maxAllowed = Math.min(29, Math.max(0, messages.length - 1))
+        if (parsed < 0 || parsed > maxAllowed) {
+          setDialNotice(`Only numbers 0–${maxAllowed} allowed`)
           setTimeout(() => setDialNotice(''), 1200)
           commitTimerRef.current = null
           return
         }
 
-        const maxIndex = Math.min(30, messages.length)
+        const maxIndex = Math.max(0, Math.min(30, messages.length))
         if (maxIndex > 0) {
-          const oneBasedIndex = Math.max(1, Math.min(parsed, maxIndex))
-          const idx = oneBasedIndex - 1
+          const idx = Math.max(0, Math.min(parsed, messages.length - 1))
           playIndex(idx).catch((error) => {
             console.error('Failed to play audio for index', idx, ':', error)
           })
@@ -657,7 +652,7 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
     setDialDigits((prev) => {
       // Block a third digit entirely
       if (prev.length >= 2) {
-        setDialNotice('Max 2 digits (1–30)')
+        setDialNotice('Max 2 digits (0–29)')
         setTimeout(() => setDialNotice(''), 1200)
         return prev
       }
@@ -672,14 +667,15 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
         return next
       }
 
-      // Enforce 1–30 while typing
-      if (parsed < 1) {
-        setDialNotice('Minimum is 1')
+      // Enforce 0–29 while typing (zero-based)
+      if (parsed < 0) {
+        setDialNotice('Minimum is 0')
         setTimeout(() => setDialNotice(''), 1200)
         return prev
       }
-      if (parsed > 30) {
-        setDialNotice('Only numbers 1–30 allowed')
+      const maxAllowed = Math.min(29, Math.max(0, messages.length - 1))
+      if (parsed > maxAllowed) {
+        setDialNotice(`Only numbers 0–${maxAllowed} allowed`)
         setTimeout(() => setDialNotice(''), 1200)
         return prev
       }
@@ -692,10 +688,9 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
         if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
         // Commit now using current buffer
         const value = parsed
-        const maxIndex = Math.min(30, messages.length)
+        const maxIndex = Math.max(0, Math.min(30, messages.length))
         if (maxIndex > 0) {
-          const oneBasedIndex = Math.max(1, Math.min(value, maxIndex))
-          const idx = oneBasedIndex - 1
+          const idx = Math.max(0, Math.min(value, messages.length - 1))
           playIndex(idx).catch((error) => {
             console.error('Failed to play audio for index', idx, ':', error)
           })
@@ -757,6 +752,15 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
 
   return (
     <div className="space-y-6">
+      {loadingMessages && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm" aria-busy="true" aria-live="polite" role="status">
+          <svg className="w-10 h-10 animate-spin text-white/90" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-90" />
+          </svg>
+          {/* <div className="mt-3 text-sm text-white/90">Loading recordings…</div> */}
+        </div>
+      )}
       {/* Main Dial Interface */}
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         <div className="glass rounded-2xl p-0  min-h-[320px] flex flex-col items-center justify-center text-center">
@@ -764,7 +768,7 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
           <div className="flex flex-col items-center gap-4">
             <RotaryDial 
               onDigit={handleDialSelect} 
-              displayNumber={selectedIdx !== null ? String(selectedIdx + 1) : (dialDigits || '')}
+              displayNumber={selectedIdx !== null ? String(selectedIdx) : (dialDigits || '')}
               currentMessage={selectedIdx !== null ? messages[selectedIdx] : null}
               currentTime={currentTime}
               duration={audioRef.current?.duration || 0}
@@ -876,7 +880,17 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
             />
           </div>
           <div className="mt-4 text-xs opacity-70">
-            {loadingMessages ? 'Loading recordings…' : 'Rotate and release to select message index'}
+            {loadingMessages ? (
+              <div className="flex items-center justify-center gap-2" aria-busy="true" aria-live="polite">
+                <svg className="w-4 h-4 animate-spin text-white/80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loading">
+                  <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-80" />
+                </svg>
+                <span>Loading recordings…</span>
+              </div>
+            ) : (
+              'Rotate and release to select message index'
+            )}
           </div>
           <div className="mt-2 text-lg tracking-widest font-mono">
             {dialDigits || '—'}

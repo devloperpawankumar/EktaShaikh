@@ -136,7 +136,7 @@ export default function App() {
               path="/booth"
               element={
                 <motion.div key="booth" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
-                  <Suspense fallback={viewReady.booth ? null : <DialLoader message="Loading booth…" />}> 
+                  <Suspense fallback={null}> 
                     <Booth 
                       onStartTranscription={startMockTranscription} 
                       socket={socketRef.current}
@@ -150,7 +150,7 @@ export default function App() {
               path="/archive"
               element={
                 <motion.div key="archive" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
-                  <Suspense fallback={viewReady.archive ? null : <DialLoader message="Loading archive…" />}> 
+                  <Suspense fallback={null}> 
                     <Archive onReady={() => markReady('archive')} />
                   </Suspense>
                 </motion.div>
@@ -160,7 +160,7 @@ export default function App() {
               path="/record"
               element={
                 <motion.div key="record" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
-                  <Suspense fallback={viewReady.record ? null : <DialLoader message="Loading recorder…" />}> 
+                  <Suspense fallback={null}> 
                     <Recorder socket={socketRef.current} onReady={() => markReady('record')} />
                   </Suspense>
                 </motion.div>
@@ -170,7 +170,7 @@ export default function App() {
               path="/admin"
               element={
                 <motion.div key="admin" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
-                  <Suspense fallback={viewReady.admin ? null : <DialLoader message="Loading admin…" />}> 
+                  <Suspense fallback={null}> 
                     <AdminUpload />
                   </Suspense>
                 </motion.div>

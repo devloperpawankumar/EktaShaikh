@@ -88,6 +88,15 @@ export default function AdminUpload() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {uploading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm" aria-busy="true" aria-live="polite" role="status">
+          <svg className="w-10 h-10 animate-spin text-white/90" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-90" />
+          </svg>
+          <div className="mt-3 text-sm text-white/90">Uploading…</div>
+        </div>
+      )}
       <div className="mb-6">
         <h2 className="text-2xl font-semibold mb-2">Upload Dial Recording</h2>
         <p className="text-sm opacity-80">

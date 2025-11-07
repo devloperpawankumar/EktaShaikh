@@ -20,7 +20,7 @@ export default function Landing() {
           {/* <span className="text-[10px] md:text-xs px-2 py-1 rounded-sm border border-black/20 bg-black/5 select-none">XYZ</span> */}
         </div>
         {/* title */}
-        <h1 className="font-extrabold tracking-tight leading-none text-[21px] md:text-[30px]">
+        <h1 className="landing-heading font-extrabold tracking-tight leading-none text-[21px] md:text-[30px]">
          Invite The One You Can't Touch
         </h1>
         {/* tabs row */}
@@ -29,7 +29,7 @@ export default function Landing() {
             <button
               key={t.label}
               onClick={() => navigate(t.path)}
-              className="cursor-pointer text-xs md:text-sm px-2.5 py-1 rounded-sm border border-black/20 bg-black/5 hover:bg-black hover:text-white transition-colors"
+              className="font-poppins cursor-pointer text-xs md:text-sm px-2.5 py-1 rounded-sm border border-black/20 bg-black/5 hover:bg-black hover:text-white transition-colors"
             >
               {t.label}
             </button>

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import DialLoader from './shared/DialLoader.jsx'
 import { appendSegmentText, srtToPlainText } from '../utils/srt.js'
 import { withApiBase } from '../config.js'
 import useWebSpeech from '../hooks/useWebSpeech.js'
@@ -35,6 +34,7 @@ export default function Recorder({ socket, onReady }) {
   const [preparing, setPreparing] = useState(false)
   const [readyToRecord, setReadyToRecord] = useState(false)
   const [showReadyToast, setShowReadyToast] = useState(false)
+  const [saving, setSaving] = useState(false)
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timerRef = useRef(null)
@@ -226,26 +226,33 @@ export default function Recorder({ socket, onReady }) {
   }
 
   const saveRecording = async () => {
-    if (!blob) return
-    const form = new FormData()
-    form.append('audio', blob, 'recording.webm')
-    form.append('title', 'User Recording')
-    form.append('durationSeconds', String(elapsed))
-    form.append('transcript', transcript)
-    form.append('type', 'user') // Explicitly set as user recording
-    await fetch(withApiBase('/api/messages/upload'), { method: 'POST', body: form })
-    // reset state after save
-    setBlob(null)
-    setElapsed(0)
-    setTranscript('')
-    
-    // Refresh user recordings list
+    if (!blob || saving) return
+    setSaving(true)
     try {
-      const res = await fetch(withApiBase('/api/messages?type=user'))
-      const data = await res.json()
-      setUserRecordings(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Failed to refresh user recordings:', error)
+      const form = new FormData()
+      form.append('audio', blob, 'recording.webm')
+      form.append('title', 'User Recording')
+      form.append('durationSeconds', String(elapsed))
+      form.append('transcript', transcript)
+      form.append('type', 'user') // Explicitly set as user recording
+      await fetch(withApiBase('/api/messages/upload'), { method: 'POST', body: form })
+      // reset state after save
+      setBlob(null)
+      setElapsed(0)
+      setTranscript('')
+
+      // Refresh user recordings list
+      try {
+        const res = await fetch(withApiBase('/api/messages?type=user'))
+        const data = await res.json()
+        setUserRecordings(Array.isArray(data) ? data : [])
+      } catch (error) {
+        console.error('Failed to refresh user recordings:', error)
+      }
+    } catch (e) {
+      console.error('Failed to save recording:', e)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -463,8 +470,17 @@ export default function Recorder({ socket, onReady }) {
             )}
             {!recording && blob && (
               <>
-                <button onClick={saveRecording} className="px-4 py-2 rounded glass hover:neon-glow transition">Save</button>
-                <button onClick={cancelRecording} className="px-4 py-2 rounded glass hover:neon-glow transition">Cancel</button>
+                {saving ? (
+                  <button disabled className="px-4 py-2 rounded glass opacity-70 cursor-not-allowed inline-flex items-center gap-2">
+                    <span className="relative flex items-center gap-2">
+                      <span className="inline-block h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+                      <span>Saving…</span>
+                    </span>
+                  </button>
+                ) : (
+                  <button onClick={saveRecording} className="px-4 py-2 rounded glass hover:neon-glow transition">Save</button>
+                )}
+                <button onClick={cancelRecording} disabled={saving} className={`px-4 py-2 rounded glass transition ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:neon-glow'}`}>Cancel</button>
               </>
             )}
           </div>
@@ -501,9 +517,24 @@ export default function Recorder({ socket, onReady }) {
         </div>
       </div>
 
-      {/* Overlay loader for a premium feel */}
+      {/* Overlay loaders (consistent with Booth) */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm" aria-busy="true" aria-live="polite" role="status">
+          <svg className="w-10 h-10 animate-spin text-white/90" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-90" />
+          </svg>
+          {/* <div className="mt-3 text-sm text-white/90">Loading your recordings…</div> */}
+        </div>
+      )}
       {preparing && (
-        <DialLoader message="Warming up live transcription…" />
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm" aria-busy="true" aria-live="polite" role="status">
+          <svg className="w-10 h-10 animate-spin text-white/90" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-90" />
+          </svg>
+          <div className="mt-3 text-sm text-white/90">Warming up live transcription…</div>
+        </div>
       )}
 
       {/* Subtle toast for ready state */}
