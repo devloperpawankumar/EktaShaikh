@@ -81,6 +81,20 @@ p {
   font-family: 'Coral Pixels', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
 }
 
+.landing-heading-white {
+  font-family: 'Poppins', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  color: #ffffff !important;
+  text-shadow: none !important;
+  filter: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeSpeed !important;
+  transform: translateZ(0);
+  will-change: auto;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
 .action-btn {
   /* Dark graphite gradient to complement the black rotary phone */
   background-image: linear-gradient(135deg, #0f0f10, #2b2b31);

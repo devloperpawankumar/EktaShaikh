@@ -8,6 +8,7 @@ const Archive = lazy(() => import('./components/Archive.jsx'))
 const Recorder = lazy(() => import('./components/Recorder.jsx'))
 const Story = lazy(() => import('./components/Story.jsx'))
 const Landing = lazy(() => import('./components/Landing.jsx'))
+const Home = lazy(() => import('./components/Home.jsx'))
 const AdminUpload = lazy(() => import('./components/AdminUpload.jsx'))
 import Tabs from './components/shared/Tabs.jsx'
 import DialLoader from './components/shared/DialLoader.jsx'
@@ -71,6 +72,7 @@ export default function App() {
   const pathToTab = (path) => {
     switch (path) {
       case '/': return 'landing'
+      case '/home': return 'home'
       case '/booth': return 'booth'
       case '/archive': return 'archive'
       case '/record': return 'record'
@@ -82,6 +84,7 @@ export default function App() {
   const goTo = (id) => {
     switch (id) {
       case 'landing': navigate('/'); break
+      case 'home': navigate('/home'); break
       case 'booth': navigate('/booth'); break
       case 'archive': navigate('/archive'); break
       case 'record': navigate('/record'); break
@@ -93,29 +96,37 @@ export default function App() {
   return (
     <div className="min-h-full relative overflow-hidden">
 
-      <header className="flex items-center justify-center p-4 sm:p-6">
+      <header className="flex flex-col items-center justify-center p-4 sm:p-6">
         {pathToTab(location.pathname) !== 'landing' && (
-          <nav className="w-full">
-            <Tabs
-              tabs={[
-                { id: 'landing', label: 'Landing' },
-                { id: 'booth', label: 'Booth' },
-                { id: 'archive', label: 'Archive' },
-                { id: 'record', label: 'Record' },
-                { id: 'admin', label: 'Admin' },
-              ]}
-              activeId={pathToTab(location.pathname)}
-              onChange={goTo}
-              hoverReveal={false}
-              maskUntilHover
-              maskLabel="Ring"
-              unstyledContainer
-              className="w-full max-w-8xl mx-auto justify-between px-2 sm:px-6"
-              gapOverride="gap-2 sm:gap-8 md:gap-16"
-              size="sm"
-              fontClass="heading-archivogrotesk font-extrabold text-[11px] sm:text-sm md:text-[25px] tracking-wide"
-            />
-          </nav>
+          <>
+            <h1 
+              onClick={() => navigate('/')}
+              className="landing-heading-white font-extrabold tracking-tight leading-none text-[21px] md:text-[30px] md:mb-10 mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              Invite The One You Can't Touch
+            </h1>
+            <nav className="w-full">
+              <Tabs
+                tabs={[
+                  { id: 'home', label: 'Home' },
+                  { id: 'booth', label: 'Booth' },
+                  { id: 'archive', label: 'Archive' },
+                  { id: 'record', label: 'Record' },
+                  { id: 'admin', label: 'Admin' },
+                ]}
+                activeId={pathToTab(location.pathname)}
+                onChange={goTo}
+                hoverReveal={false}
+                maskUntilHover
+                maskLabel="Ring"
+                unstyledContainer
+                className="w-full max-w-8xl mx-auto justify-between px-2 sm:px-6"
+                gapOverride="gap-2 sm:gap-8 md:gap-16"
+                size="sm"
+                fontClass="heading-archivogrotesk font-extrabold text-[11px] sm:text-sm md:text-[25px] tracking-wide"
+              />
+            </nav>
+          </>
         )}
       </header>
 
@@ -128,6 +139,16 @@ export default function App() {
                 <motion.div key="landing" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
                   <Suspense fallback={null}>
                     <Landing />
+                  </Suspense>
+                </motion.div>
+              }
+            />
+            <Route
+              path="/home"
+              element={
+                <motion.div key="home" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
+                  <Suspense fallback={null}>
+                    <Home />
                   </Suspense>
                 </motion.div>
               }

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Landing() {
   const navigate = useNavigate()
   const tabs = [
-    { label: 'Home', path: '/' },
+    { label: 'Home', path: '/home' },
     { label: 'Booth', path: '/booth' },
     { label: 'Archive', path: '/archive' },
     { label: 'Record', path: '/record' },

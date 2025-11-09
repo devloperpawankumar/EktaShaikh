@@ -28,13 +28,14 @@ export function appendSegmentText(existing, segment) {
   return lines.join('\n\n')
 }
 
-// Strip SRT numbering and timecodes to plain text lines
+// Strip SRT numbering and timecodes to plain text, removing all line breaks
 export function srtToPlainText(srt) {
   if (!srt) return ''
   return srt
     .replace(/^\s*\d+\s*$\n?/gm, '')
     .replace(/^\d{2}:\d{2}:\d{2},\d{3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{3}\s*$\n?/gm, '')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n+/g, ' ') // Replace all line breaks with spaces
+    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
     .trim()
 }
 

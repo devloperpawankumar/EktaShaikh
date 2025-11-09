@@ -21,7 +21,7 @@ function TranscriptPreview({ text }) {
     )
   }
   return (
-    <div className="text-xs opacity-90 whitespace-pre-wrap">
+    <div className="text-xs opacity-90 break-words">
       {plain}
       <button className="mt-2 block text-[11px] underline opacity-80" onClick={() => setExpanded(false)}>Show less</button>
     </div>
@@ -1043,7 +1043,7 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
                  !isTranscribing ? 'Starting transcription...' : 'Transcribing audio...'}
               </div>
             ) : (
-              <div className="text-sm leading-relaxed opacity-90 whitespace-pre-wrap">
+              <div className="text-sm leading-relaxed opacity-90 break-words">
                 {cinematicTranscript}
                 {interimLine && (
                   <div className="mt-2 opacity-70 italic">{interimLine}</div>

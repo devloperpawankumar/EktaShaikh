@@ -45,49 +45,19 @@ export function formatCinematicTranscript({ words = [], text = '' }) {
 		}
 	}
 
-	const LINE_BREAK_MS = 500
-	const STANZA_BREAK_MS = 2000
-
-	let out = []
-	let currentLine = []
+	// Simple paragraph format - no line breaks or stanza breaks
+	let tokens = []
 
 	for (let i = 0; i < words.length; i += 1) {
 		const w = words[i]
 		let token = convertStageTags(w?.text || '')
-		// Remove loudness-based casing; keep original token casing
-		 // Loudness styling: LOUD => ALL CAPS, soft => lowercase
-		//  if (w?.loudnessTag === 'LOUD') {
-        //     token = token.toUpperCase()
-        // } else if (w?.loudnessTag === 'soft') {
-        //     token = token.toLowerCase()
-        // }
-		pushToken(currentLine, token)
-
-		const next = words[i + 1]
-		if (next) {
-			const curEnd = Number.isFinite(w?.end) ? w.end : (Number.isFinite(w?.start) ? w.start : 0)
-			const nextStart = Number.isFinite(next?.start) ? next.start : curEnd
-			const gap = Math.max(0, nextStart - curEnd)
-			if (gap >= STANZA_BREAK_MS) {
-				if (currentLine.length > 0) out.push(currentLine.join(' '))
-				out.push('')
-				currentLine = []
-			} else if (gap >= LINE_BREAK_MS) {
-				if (currentLine.length > 0) out.push(currentLine.join(' '))
-				currentLine = []
-			}
-		}
+		pushToken(tokens, token)
 	}
 
-	if (currentLine.length > 0) out.push(currentLine.join(' '))
-
-	const finalText = out
-		.map((line) =>
-			String(line)
-				.replace(/\b([A-Za-z]+)\s?-{2,}\b/g, '$1—')
-				.replace(/\s?-\s?$/g, ' -')
-		)
-		.join('\n')
+	const finalText = tokens
+		.join(' ')
+		.replace(/\b([A-Za-z]+)\s?-{2,}\b/g, '$1—')
+		.replace(/\s?-\s?$/g, ' -')
 		.trim()
 
 	return finalText

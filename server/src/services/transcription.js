@@ -71,11 +71,8 @@ export function formatCinematicTranscript({ words = [], text = '' }) {
     }
   };
 
-  const LINE_BREAK_MS = 500; // ~0.5s
-  const STANZA_BREAK_MS = 2000; // ≥2s
-
-  let out = [];
-  let currentLine = [];
+  // Simple paragraph format - no line breaks or stanza breaks
+  let tokens = [];
 
   for (let i = 0; i < words.length; i += 1) {
     const w = words[i];
@@ -84,35 +81,17 @@ export function formatCinematicTranscript({ words = [], text = '' }) {
 
     // Stage tag tokens occasionally appear as [laughter] in words
     const converted = convertStageTags(token);
-    pushToken(currentLine, converted);
-
-    const next = words[i + 1];
-    if (next) {
-      const gap = Math.max(0, (next.start ?? 0) - (w.end ?? next.start ?? 0));
-      if (gap >= STANZA_BREAK_MS) {
-        if (currentLine.length > 0) out.push(currentLine.join(' '));
-        out.push(''); // blank line for stanza break
-        currentLine = [];
-      } else if (gap >= LINE_BREAK_MS) {
-        if (currentLine.length > 0) out.push(currentLine.join(' '));
-        currentLine = [];
-      }
-    }
+    pushToken(tokens, converted);
   }
 
-  if (currentLine.length > 0) out.push(currentLine.join(' '));
-
   // Final pass: normalize em dashes and cut-offs hinted by ASR
-  const finalText = out
-    .map((line) => {
-      return line
-        // sequences like "so - -" or stretched vowels often appear as repeated hyphens/ellipses
-        .replace(/\b([A-Za-z]+)\s?-{2,}\b/g, '$1—') // convert stretched to em dash
-        .replace(/\s?-\s?$/g, ' -'); // preserve cut-off at end of word
-    })
-    .join('\n');
+  const finalText = tokens
+    .join(' ')
+    .replace(/\b([A-Za-z]+)\s?-{2,}\b/g, '$1—') // convert stretched to em dash
+    .replace(/\s?-\s?$/g, ' -') // preserve cut-off at end of word
+    .trim();
 
-  return finalText.trim();
+  return finalText;
 }
 
 export async function mockLiveTranscriptEmitter({ socket, namespace = 'transcription' }) {
