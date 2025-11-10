@@ -8,6 +8,7 @@ import { transcribeFileWithAssemblyAI, detectLanguageWithAssemblyAI, formatCinem
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import { uploadAudioFile } from '../services/cloudinary.js';
+import requireUser from '../middleware/requireUser.js';
 
 const router = express.Router();
 
@@ -40,6 +41,13 @@ router.get('/', async (req, res) => {
   try {
     const { type, limit } = req.query;
     const filter = type ? { type } : {};
+    // If client requests their own user items, optionally filter by x-user-id
+    if (type === 'user') {
+      const userId = (req.headers['x-user-id'] || '').toString().trim();
+      if (userId) {
+        filter.ownerId = userId;
+      }
+    }
     const queryLimit = limit ? Math.min(parseInt(limit, 10), 100) : 100;
     const items = await VoiceMessage.find(filter).sort({ createdAt: -1 }).limit(queryLimit).lean();
     res.json(items);
@@ -50,7 +58,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create message via upload
-router.post('/upload', upload.single('audio'), async (req, res) => {
+router.post('/upload', requireUser, upload.single('audio'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -105,6 +113,7 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
     transcript: transcript || '',
     type: type || 'user',
     phoneNumber: phoneNumber || undefined,
+    ownerId: req.userId || undefined,
   });
 
   // Auto-transcribe if requested (default for admin uploads)
@@ -142,6 +151,25 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
   try { fs.unlinkSync(path.resolve('uploads', finalFilename)); } catch {}
 
   res.status(201).json(doc);
+});
+
+// Update transcript/title for a message (owner only)
+router.patch('/:id', requireUser, async (req, res) => {
+  try {
+    const { title, transcript } = req.body || {};
+    const item = await VoiceMessage.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    if ((item.ownerId || '').toString() !== (req.userId || '').toString()) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (typeof title === 'string') item.title = title.trim() || item.title;
+    if (typeof transcript === 'string') item.transcript = transcript;
+    await item.save();
+    res.json({ id: item._id, title: item.title, transcript: item.transcript });
+  } catch (err) {
+    console.error('Update message error:', err);
+    res.status(500).json({ error: 'Failed to update message' });
+  }
 });
 
 // Upload dial recording (for admin use)

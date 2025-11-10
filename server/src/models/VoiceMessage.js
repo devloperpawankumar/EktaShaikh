@@ -6,6 +6,7 @@ const VoiceMessageSchema = new mongoose.Schema(
     audioUrl: { type: String, required: true },
     durationSeconds: { type: Number },
     transcript: { type: String },
+    ownerId: { type: String, index: true }, // anonymous or authenticated user id (from header/cookie)
     words: { type: [mongoose.Schema.Types.Mixed], default: [] }, // Word-level timing data from AssemblyAI
     detected_language: { type: String }, // Detected language code (e.g., 'en', 'es', 'fr')
     language_confidence: { type: Number }, // Confidence score for language detection (0-1)

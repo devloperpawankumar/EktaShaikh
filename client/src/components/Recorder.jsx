@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { appendSegmentText, srtToPlainText } from '../utils/srt.js'
 import { withApiBase } from '../config.js'
+import { getAuthHeaders } from '../utils/user.js'
 import useWebSpeech from '../hooks/useWebSpeech.js'
 import ThumbnailGenerator from './ThumbnailGenerator.jsx'
 
@@ -29,6 +30,7 @@ export default function Recorder({ socket, onReady }) {
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [transcript, setTranscript] = useState('')
+  const [title, setTitle] = useState('User Recording')
   const [userRecordings, setUserRecordings] = useState([])
   const [loading, setLoading] = useState(true)
   const [preparing, setPreparing] = useState(false)
@@ -40,6 +42,22 @@ export default function Recorder({ socket, onReady }) {
   const timerRef = useRef(null)
   const { supported, listening, segments, start: startSTT, stop: stopSTT } = useWebSpeech({ lang: 'en-US', interimResults: true })
   const [blob, setBlob] = useState(null)
+  const preSaveAudioRef = useRef(null)
+  const preSaveUrl = useMemo(() => {
+    if (!blob) return ''
+    try {
+      return URL.createObjectURL(blob)
+    } catch {
+      return ''
+    }
+  }, [blob])
+  useEffect(() => {
+    return () => {
+      if (preSaveUrl) {
+        try { URL.revokeObjectURL(preSaveUrl) } catch {}
+      }
+    }
+  }, [preSaveUrl])
   const [levels, setLevels] = useState(new Array(24).fill(0))
   const audioCtxRef = useRef(null)
   const analyserRef = useRef(null)
@@ -98,7 +116,7 @@ export default function Recorder({ socket, onReady }) {
   useEffect(() => {
     const fetchUserRecordings = async () => {
       try {
-        const res = await fetch(withApiBase('/api/messages?type=user'))
+        const res = await fetch(withApiBase('/api/messages?type=user'), { headers: getAuthHeaders() })
         const data = await res.json()
         setUserRecordings(Array.isArray(data) ? data : [])
       } catch (error) {
@@ -231,19 +249,20 @@ export default function Recorder({ socket, onReady }) {
     try {
       const form = new FormData()
       form.append('audio', blob, 'recording.webm')
-      form.append('title', 'User Recording')
+      form.append('title', title || 'User Recording')
       form.append('durationSeconds', String(elapsed))
       form.append('transcript', transcript)
       form.append('type', 'user') // Explicitly set as user recording
-      await fetch(withApiBase('/api/messages/upload'), { method: 'POST', body: form })
+      await fetch(withApiBase('/api/messages/upload'), { method: 'POST', headers: getAuthHeaders(), body: form })
       // reset state after save
       setBlob(null)
       setElapsed(0)
       setTranscript('')
+      setTitle('User Recording')
 
       // Refresh user recordings list
       try {
-        const res = await fetch(withApiBase('/api/messages?type=user'))
+        const res = await fetch(withApiBase('/api/messages?type=user'), { headers: getAuthHeaders() })
         const data = await res.json()
         setUserRecordings(Array.isArray(data) ? data : [])
       } catch (error) {
@@ -260,6 +279,7 @@ export default function Recorder({ socket, onReady }) {
     setBlob(null)
     setElapsed(0)
     setTranscript('')
+    setTitle('User Recording')
   }
 
   // ===== AssemblyAI Realtime helpers =====
@@ -470,6 +490,32 @@ export default function Recorder({ socket, onReady }) {
             )}
             {!recording && blob && (
               <>
+                {/* Preview the recording before saving */}
+                <div className="w-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm opacity-80">Preview</div>
+                    <div className="text-xs opacity-60">
+                      {String(Math.floor(elapsed/60)).padStart(2,'0')}:{String(elapsed%60).padStart(2,'0')}
+                    </div>
+                  </div>
+                  <audio
+                    ref={preSaveAudioRef}
+                    controls
+                    className="w-full rounded-lg"
+                    src={preSaveUrl || undefined}
+                  />
+                </div>
+                {/* Pre-save edit form */}
+                <div className="w-full grid gap-3">
+                  <div>
+                    <label className="block text-xs opacity-70 mb-1">Transcript</label>
+                    <textarea
+                      className="w-full min-h-[140px] rounded border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
+                      value={transcript}
+                      onChange={(e) => setTranscript(e.target.value)}
+                    />
+                  </div>
+                </div>
                 {saving ? (
                   <button disabled className="px-4 py-2 rounded glass opacity-70 cursor-not-allowed inline-flex items-center gap-2">
                     <span className="relative flex items-center gap-2">

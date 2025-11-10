@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { io } from 'socket.io-client'
 import { getSocketUrl } from './config.js'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 const Booth = lazy(() => import('./components/Booth.jsx'))
 const Archive = lazy(() => import('./components/Archive.jsx'))
 const Recorder = lazy(() => import('./components/Recorder.jsx'))
@@ -44,6 +44,7 @@ export default function App() {
   const navigate = useNavigate()
   const socketRef = useRef(null)
   const [viewReady, setViewReady] = useState({ landing: true, booth: false, archive: false, record: false, story: false, admin: true })
+  const isProd = import.meta.env.PROD === true
 
   // Connect socket only on routes that need it
   useEffect(() => {
@@ -93,6 +94,16 @@ export default function App() {
     }
   }
 
+  const tabsConfig = [
+    { id: 'home', label: 'Home' },
+    { id: 'booth', label: 'Booth' },
+    { id: 'archive', label: 'Archive' },
+    { id: 'record', label: 'Record' },
+  ]
+  if (!isProd) {
+    tabsConfig.push({ id: 'admin', label: 'Admin' })
+  }
+
   return (
     <div className="min-h-full relative overflow-hidden">
 
@@ -107,13 +118,7 @@ export default function App() {
             </h1>
             <nav className="w-full">
               <Tabs
-                tabs={[
-                  { id: 'home', label: 'Home' },
-                  { id: 'booth', label: 'Booth' },
-                  { id: 'archive', label: 'Archive' },
-                  { id: 'record', label: 'Record' },
-                  { id: 'admin', label: 'Admin' },
-                ]}
+                tabs={tabsConfig}
                 activeId={pathToTab(location.pathname)}
                 onChange={goTo}
                 hoverReveal={false}
@@ -187,16 +192,20 @@ export default function App() {
                 </motion.div>
               }
             />
-            <Route
-              path="/admin"
-              element={
-                <motion.div key="admin" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
-                  <Suspense fallback={null}> 
-                    <AdminUpload />
-                  </Suspense>
-                </motion.div>
-              }
-            />
+            {!isProd ? (
+              <Route
+                path="/admin"
+                element={
+                  <motion.div key="admin" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
+                    <Suspense fallback={null}> 
+                      <AdminUpload />
+                    </Suspense>
+                  </motion.div>
+                }
+              />
+            ) : (
+              <Route path="/admin" element={<Navigate to="/" replace />} />
+            )}
           </Routes>
         </AnimatePresence>
       </main>
