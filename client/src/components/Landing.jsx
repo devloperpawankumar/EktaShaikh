@@ -9,7 +9,7 @@ export default function Landing() {
     { label: 'Booth', path: '/booth' },
     { label: 'Archive', path: '/archive' },
     { label: 'Record', path: '/record' },
-    { label: 'Admin', path: '/admin' },
+    // { label: 'Admin', path: '/admin' },
   ]
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
