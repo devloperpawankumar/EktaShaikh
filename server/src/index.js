@@ -8,6 +8,7 @@ import { Server as SocketIOServer } from 'socket.io';
 
 import messagesRouter from './routes/messages.js';
 import assemblyaiRouter from './routes/assemblyai.js';
+import adminRouter from './routes/admin.js';
 import { mockLiveTranscriptEmitter, startAssemblyAIRealtimeSession } from './services/transcription.js';
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/uploads', express.static('uploads', {
 // Routes
 app.use('/api/messages', messagesRouter);
 app.use('/api/assemblyai', assemblyaiRouter);
+app.use('/api/admin', adminRouter);
 
 // Basic health route
 app.get('/api/health', (req, res) => {

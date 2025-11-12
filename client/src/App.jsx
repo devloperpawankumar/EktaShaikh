@@ -10,6 +10,7 @@ const Story = lazy(() => import('./components/Story.jsx'))
 const Landing = lazy(() => import('./components/Landing.jsx'))
 const Home = lazy(() => import('./components/Home.jsx'))
 const AdminUpload = lazy(() => import('./components/AdminUpload.jsx'))
+const AdminDashboard = lazy(() => import('./components/AdminDashboard.jsx'))
 import Tabs from './components/shared/Tabs.jsx'
 import DialLoader from './components/shared/DialLoader.jsx'
 
@@ -89,7 +90,7 @@ export default function App() {
       case 'booth': navigate('/booth'); break
       case 'archive': navigate('/archive'); break
       case 'record': navigate('/record'); break
-      case 'admin': navigate('/admin'); break
+      case 'admin': navigate('/manage/admin'); break
       default: navigate('/');
     }
   }
@@ -100,9 +101,6 @@ export default function App() {
     { id: 'archive', label: 'Archive' },
     { id: 'record', label: 'Record' },
   ]
-  if (!isProd) {
-    tabsConfig.push({ id: 'admin', label: 'Admin' })
-  }
 
   return (
     <div className="min-h-full relative overflow-hidden">
@@ -206,9 +204,53 @@ export default function App() {
             ) : (
               <Route path="/admin" element={<Navigate to="/" replace />} />
             )}
+            <Route
+              path="/manage/admin"
+              element={
+                <motion.div key="manage-admin" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
+                  <Suspense fallback={null}> 
+                    <AdminDashboard />
+                  </Suspense>
+                </motion.div>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <motion.div key="not-found" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
+                  <NotFound />
+                </motion.div>
+              }
+            />
           </Routes>
         </AnimatePresence>
       </main>
+    </div>
+  )
+}
+
+function NotFound() {
+  const navigate = useNavigate()
+  return (
+    <div className="mx-auto max-w-md rounded-xl border border-white/10 bg-white/5 p-8 text-center text-white">
+      <h2 className="text-2xl font-semibold">Page not found</h2>
+      <p className="mt-2 text-sm text-white/70">
+        We couldn&apos;t find the page you were looking for. It may have been moved or never existed.
+      </p>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <button
+          onClick={() => navigate('/')}
+          className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300"
+        >
+          Go to home
+        </button>
+        <button
+          onClick={() => navigate(-1)}
+          className="rounded-lg border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:border-white/30"
+        >
+          Go back
+        </button>
+      </div>
     </div>
   )
 }
