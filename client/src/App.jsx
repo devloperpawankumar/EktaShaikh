@@ -98,8 +98,9 @@ export default function App() {
   const tabsConfig = [
     { id: 'home', label: 'Home' },
     { id: 'booth', label: 'Booth' },
-    { id: 'archive', label: 'Archive' },
     { id: 'record', label: 'Record' },
+    { id: 'archive', label: 'Archive' },
+    
   ]
 
   return (
