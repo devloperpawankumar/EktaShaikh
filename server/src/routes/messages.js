@@ -7,7 +7,7 @@ import VoiceMessage from '../models/VoiceMessage.js';
 import { transcribeFileWithAssemblyAI, detectLanguageWithAssemblyAI, formatCinematicTranscript } from '../services/transcription.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
-import { uploadAudioFile } from '../services/cloudinary.js';
+import { uploadAudioFile, uploadImageFile } from '../services/cloudinary.js';
 import requireUser from '../middleware/requireUser.js';
 
 const router = express.Router();
@@ -58,14 +58,18 @@ router.get('/', async (req, res) => {
 });
 
 // Create message via upload
-router.post('/upload', requireUser, upload.single('audio'), async (req, res) => {
-  if (!req.file) {
+router.post('/upload', requireUser, upload.fields([
+  { name: 'audio', maxCount: 1 },
+  { name: 'image', maxCount: 1 },
+]), async (req, res) => {
+  const audioFile = Array.isArray(req.files?.audio) ? req.files.audio[0] : null;
+  if (!audioFile) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
   const { title, durationSeconds, transcript, type, phoneNumber, autoTranscribe } = req.body;
 
-  const originalFilename = req.file.filename;
+  const originalFilename = audioFile.filename;
   const originalPath = path.resolve('uploads', originalFilename);
   let finalFilename = originalFilename;
 
@@ -106,11 +110,33 @@ router.post('/upload', requireUser, upload.single('audio'), async (req, res) => 
     // eslint-disable-next-line no-console
     console.warn('Cloudinary upload failed or not configured, using local file:', e?.message || e);
   }
+
+  // Optional image upload handling
+  let imageUrl;
+  const imageFile = Array.isArray(req.files?.image) ? req.files.image[0] : null;
+  if (imageFile) {
+    const imageFilename = imageFile.filename;
+    const imagePath = path.resolve('uploads', imageFilename);
+    imageUrl = `/uploads/${imageFilename}`;
+    try {
+      const uploadedImage = await uploadImageFile(imagePath, {
+        publicId: path.basename(imageFilename, path.extname(imageFilename)),
+      });
+      if (uploadedImage && uploadedImage.secure_url) {
+        imageUrl = uploadedImage.secure_url;
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Cloudinary image upload failed or not configured, using local file:', e?.message || e);
+    }
+  }
+
   const doc = await VoiceMessage.create({
     title: title || 'Untitled Message',
     audioUrl,
     durationSeconds: durationSeconds ? Number(durationSeconds) : undefined,
     transcript: transcript || '',
+    imageUrl: imageUrl || undefined,
     type: type || 'user',
     phoneNumber: phoneNumber || undefined,
     ownerId: req.userId || undefined,
@@ -149,6 +175,10 @@ router.post('/upload', requireUser, upload.single('audio'), async (req, res) => 
 
   // Best-effort cleanup after transcription
   try { fs.unlinkSync(path.resolve('uploads', finalFilename)); } catch {}
+  // Best-effort cleanup for uploaded image file if still local
+  if (imageFile) {
+    try { fs.unlinkSync(path.resolve('uploads', imageFile.filename)); } catch {}
+  }
 
   res.status(201).json(doc);
 });

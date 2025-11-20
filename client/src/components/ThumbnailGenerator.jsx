@@ -1,5 +1,6 @@
 import { useState, useRef, memo, useEffect } from 'react';
 import thumbnailImage from '../assests/images/Thumbnail.jpg';
+import { withApiBase } from '../config.js';
 
 // Global image preloader - loads once and is shared across all components
 let globalImageLoaded = false;
@@ -83,6 +84,10 @@ const ThumbnailGenerator = memo(function ThumbnailGenerator({ recording, classNa
 
   const formattedDuration = formatDuration(recording?.durationSeconds || duration);
 
+  const imageSrc = recording?.imageUrl
+    ? withApiBase(recording.imageUrl)
+    : thumbnailImage;
+
   return (
     <div 
       ref={containerRef}
@@ -104,7 +109,7 @@ const ThumbnailGenerator = memo(function ThumbnailGenerator({ recording, classNa
       {shouldLoad && (
         <img 
           ref={imgRef}
-          src={thumbnailImage} 
+          src={imageSrc} 
           alt={recording?.title || 'Archive thumbnail'}
           className={`w-full h-full object-cover transition-opacity duration-500 ${
             imageLoaded ? 'opacity-100' : 'opacity-0'

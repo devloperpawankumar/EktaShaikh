@@ -5,6 +5,7 @@ import { withApiBase } from '../config.js'
 import { getAuthHeaders } from '../utils/user.js'
 import useWebSpeech from '../hooks/useWebSpeech.js'
 import ThumbnailGenerator from './ThumbnailGenerator.jsx'
+import thumbnailImage from '../assests/images/Thumbnail.jpg'
 
 function TranscriptPreview({ text }) {
   const [expanded, setExpanded] = useState(false)
@@ -42,6 +43,8 @@ export default function Recorder({ socket, onReady }) {
   const timerRef = useRef(null)
   const { supported, listening, segments, start: startSTT, stop: stopSTT } = useWebSpeech({ lang: 'en-US', interimResults: true })
   const [blob, setBlob] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const preSaveAudioRef = useRef(null)
   const preSaveUrl = useMemo(() => {
     if (!blob) return ''
@@ -253,12 +256,17 @@ export default function Recorder({ socket, onReady }) {
       form.append('durationSeconds', String(elapsed))
       form.append('transcript', transcript)
       form.append('type', 'user') // Explicitly set as user recording
+      if (imageFile) {
+        form.append('image', imageFile)
+      }
       await fetch(withApiBase('/api/messages/upload'), { method: 'POST', headers: getAuthHeaders(), body: form })
       // reset state after save
       setBlob(null)
       setElapsed(0)
       setTranscript('')
       setTitle('User Recording')
+      setImageFile(null)
+      setImagePreviewUrl('')
 
       // Refresh user recordings list
       try {
@@ -280,6 +288,8 @@ export default function Recorder({ socket, onReady }) {
     setElapsed(0)
     setTranscript('')
     setTitle('User Recording')
+    setImageFile(null)
+    setImagePreviewUrl('')
   }
 
   // ===== AssemblyAI Realtime helpers =====
@@ -451,6 +461,9 @@ export default function Recorder({ socket, onReady }) {
 
   return (
     <div className="space-y-6">
+      <div className="glass rounded-2xl p-4 text-sm leading-relaxed text-amber-100/90 bg-amber-500/5 border border-amber-400/20">
+        <p>You can record in any language. Our system currently auto-transcribes only in English, but you can edit the transcript at the time of uploading. You’re invited to correct, expand, or add your own transcriptions—in Roman (Latin) script or in other languages—so you can actively co-write and shape this archive.</p>
+      </div>
       {/* Main Recording Interface */}
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         <div className="glass rounded-2xl p-6 min-h-[320px]">
@@ -506,7 +519,56 @@ export default function Recorder({ socket, onReady }) {
                   />
                 </div>
                 {/* Pre-save edit form */}
-                <div className="w-full grid gap-3">
+                <div className="w-full grid gap-4">
+                  <div>
+                    <label className="block text-xs opacity-70 mb-1">Title</label>
+                    <input
+                      type="text"
+                      className="w-full rounded border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter a name for this recording"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs opacity-70 mb-1">Cover image (optional)</label>
+                    <div className="flex flex-col sm:flex-row gap-3 items-start">
+                      <div className="w-full sm:w-40 rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                        <img
+                          src={imagePreviewUrl || thumbnailImage}
+                          alt="Recording cover"
+                          className="w-full h-24 object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 w-full">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="block w-full text-xs text-white/80 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-white/10 file:text-white hover:file:bg-white/20"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null
+                            setImageFile(file)
+                            if (imagePreviewUrl) {
+                              try { URL.revokeObjectURL(imagePreviewUrl) } catch {}
+                            }
+                            if (file) {
+                              try {
+                                const url = URL.createObjectURL(file)
+                                setImagePreviewUrl(url)
+                              } catch {
+                                setImagePreviewUrl('')
+                              }
+                            } else {
+                              setImagePreviewUrl('')
+                            }
+                          }}
+                        />
+                        <p className="mt-1 text-[11px] opacity-60">
+                          If you don’t choose an image, a default picture will be used.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-xs opacity-70 mb-1">Transcript</label>
                     <textarea
@@ -533,7 +595,7 @@ export default function Recorder({ socket, onReady }) {
         </div>
 
         <div className="glass rounded-2xl p-6 min-h-[320px]">
-          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+          <div className="flex items-center gap-2 text-sm font-medium mb-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             Live Transcription
           </div>

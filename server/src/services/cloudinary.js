@@ -38,4 +38,18 @@ export async function uploadAudioFile(filePath, { publicId, folder } = {}) {
   return res
 }
 
+export async function uploadImageFile(filePath, { publicId, folder } = {}) {
+  configureCloudinary()
+  if (!configured) return null
+  const targetFolder = folder || CLOUDINARY_FOLDER || 'digital-phone-booth/images'
+  const options = {
+    resource_type: 'image',
+    folder: targetFolder,
+    public_id: publicId || undefined,
+    overwrite: false
+  }
+  const res = await cloudinary.uploader.upload(filePath, options)
+  return res
+}
+
 

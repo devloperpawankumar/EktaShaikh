@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { appendSegmentText, srtToPlainText } from '../utils/srt.js'
-import { formatCinematicTranscript } from '../utils/transcriptFormat.js'
 import { withApiBase } from '../config.js'
 import useWebSpeech from '../hooks/useWebSpeech.js'
 import RotaryDial from './RotaryDial.jsx'
 import WordHighlighter from './WordHighlighter.jsx'
 import ThumbnailGenerator from './ThumbnailGenerator.jsx'
+import ConsentSection from './ConsentSection.jsx'
+
+const normalizeTranscriptText = (text) => {
+  if (!text) return ''
+  const str = String(text)
+  return /\d+\s+-->/.test(str) ? srtToPlainText(str) : str
+}
 
 function TranscriptPreview({ text }) {
   const [expanded, setExpanded] = useState(false)
-  const plain = srtToPlainText(text)
+  const plain = normalizeTranscriptText(text)
   if (!plain) return <div className="text-xs opacity-70">No transcript yet.</div>
   if (!expanded) {
     return (
@@ -47,7 +53,6 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
   const [mediaStreamSource, setMediaStreamSource] = useState(null)
   const [processorNode, setProcessorNode] = useState(null)
   const [currentTime, setCurrentTime] = useState(0)
-  const [wordData, setWordData] = useState([])
   const [detectedLanguage, setDetectedLanguage] = useState(null)
   const [languageConfidence, setLanguageConfidence] = useState(null)
   const [audioError, setAudioError] = useState(null)
@@ -190,12 +195,17 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
   }, [segments])
 
   // Build formatted cinematic transcript for display in booth
-  const cinematicTranscript = useMemo(() => {
-    return formatCinematicTranscript({
-      words: Array.isArray(wordData) ? wordData : [],
-      text: srtToPlainText(transcript)
-    })
-  }, [wordData, transcript])
+  const displayTranscript = useMemo(() => normalizeTranscriptText(transcript), [transcript])
+
+  const selectedMessage = useMemo(() => {
+    if (selectedIdx == null) return null
+    return messages[selectedIdx] || null
+  }, [selectedIdx, messages])
+
+  const selectedTags = useMemo(() => {
+    if (!selectedMessage || !Array.isArray(selectedMessage.tags)) return []
+    return selectedMessage.tags.map((tag) => String(tag)).filter(Boolean)
+  }, [selectedMessage])
 
   // Setup audio processing for transcription
   const setupAudioProcessing = async () => {
@@ -587,11 +597,6 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
     if (item?.transcript) setTranscript(item.transcript)
     
     // Set word data if available (from AssemblyAI transcription)
-    if (item?.words && Array.isArray(item.words)) {
-      setWordData(item.words)
-    } else {
-      setWordData([])
-    }
     
     // Set language detection information if available
     if (item?.detected_language) {
@@ -900,11 +905,23 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
               {dialNotice}
             </div>
           )}
-          <div className="mt-2 text-sm opacity-90">
-            {selectedIdx !== null && messages[selectedIdx] ? (
+          <div className="mt-2 text-sm opacity-90 text-center">
+            {selectedMessage ? (
               <div>
-                <div className="font-semibold">{messages[selectedIdx].title || 'Message'}</div>
+                <div className="font-semibold break-words">{selectedMessage.title || 'Message'}</div>
                 <div className="text-xs opacity-70">Track {selectedIdx + 1} of {messages.length}</div>
+                {selectedTags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap justify-center gap-1">
+                    {selectedTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[11px] uppercase tracking-wide bg-white/10 px-2 py-0.5 rounded-full border border-white/5"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : '—'}
           </div>
@@ -1037,14 +1054,23 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
             {isPlaying && !isTranscribing && <span className="text-xs opacity-70 ml-2">(Audio playing)</span>}
           </div>
           <div ref={listRef} className="rounded-xl border border-white/10 bg-slate-900/50 p-4 max-h-72 overflow-y-auto overflow-x-hidden">
-            {(!wordData || wordData.length === 0) && !cinematicTranscript ? (
+            {!displayTranscript ? (
               <div className="opacity-60 text-sm">
                 {!isPlaying ? 'Play audio to start live transcription' :
                  !isTranscribing ? 'Starting transcription...' : 'Transcribing audio...'}
               </div>
             ) : (
-              <div className="text-sm leading-relaxed opacity-90 break-words">
-                {cinematicTranscript}
+              <div className="text-sm leading-relaxed opacity-90 break-words whitespace-pre-line">
+                {displayTranscript}
+                {selectedTags.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-wide text-blue-200/90">
+                    {selectedTags.map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 rounded-full bg-blue-400/10 border border-blue-300/30">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {interimLine && (
                   <div className="mt-2 opacity-70 italic">{interimLine}</div>
                 )}
@@ -1054,6 +1080,8 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
         </div>
       </div>
 
+      <ConsentSection className="mt-12" id="booth-consent" />
+
       {/* Dial Archives Section hidden */}
     </div>
   )
@@ -1061,6 +1089,10 @@ export default function Booth({ onStartTranscription, socket, onReady }) {
 
 const BoothMessageCard = memo(function BoothMessageCard({ message, index, isSelected, isPlaying, currentTime, duration, onPlay, getLanguageName }) {
   const [showDetails, setShowDetails] = useState(false)
+  const tags = useMemo(() => {
+    if (!Array.isArray(message.tags)) return []
+    return message.tags.map((tag) => String(tag)).filter(Boolean)
+  }, [message.tags])
   
   const formatDuration = useCallback((seconds) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return 'Unknown'
@@ -1133,10 +1165,23 @@ const BoothMessageCard = memo(function BoothMessageCard({ message, index, isSele
         
         <p className="text-sm opacity-80 line-clamp-2">
           {message.transcript ? 
-            srtToPlainText(message.transcript).substring(0, 100) + '...' : 
+            `${normalizeTranscriptText(message.transcript).substring(0, 100)}...` : 
             'No transcript available'
           }
         </p>
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/5 border border-white/10"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Language Detection Info */}
         {message.detected_language && (
@@ -1169,13 +1214,16 @@ const BoothMessageCard = memo(function BoothMessageCard({ message, index, isSele
   )
 }, (prevProps, nextProps) => {
   // Custom comparison to prevent unnecessary re-renders
+  const prevTagsKey = Array.isArray(prevProps.message.tags) ? prevProps.message.tags.join('|') : ''
+  const nextTagsKey = Array.isArray(nextProps.message.tags) ? nextProps.message.tags.join('|') : ''
   return (
     prevProps.message._id === nextProps.message._id &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isPlaying === nextProps.isPlaying &&
     Math.abs((prevProps.currentTime || 0) - (nextProps.currentTime || 0)) < 0.5 && // Only update on significant time changes
     prevProps.duration === nextProps.duration &&
-    prevProps.index === nextProps.index
+    prevProps.index === nextProps.index &&
+    prevTagsKey === nextTagsKey
   )
 })
 

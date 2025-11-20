@@ -8,8 +8,11 @@ const VoiceMessageSchema = new mongoose.Schema(
     transcript: { type: String },
     ownerId: { type: String, index: true }, // anonymous or authenticated user id (from header/cookie)
     words: { type: [mongoose.Schema.Types.Mixed], default: [] }, // Word-level timing data from AssemblyAI
+    tags: { type: [String], default: [] },
     detected_language: { type: String }, // Detected language code (e.g., 'en', 'es', 'fr')
     language_confidence: { type: Number }, // Confidence score for language detection (0-1)
+    // Optional custom thumbnail image for this recording
+    imageUrl: { type: String },
     // Enriched AssemblyAI outputs
     utterances: { type: [mongoose.Schema.Types.Mixed], default: [] },
     sentiment_analysis_results: { type: [mongoose.Schema.Types.Mixed], default: [] },

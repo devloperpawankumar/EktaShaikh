@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { srtToPlainText } from '../utils/srt.js'
 import { withApiBase } from '../config.js'
 import ThumbnailGenerator from './ThumbnailGenerator.jsx'
+import ConsentSection from './ConsentSection.jsx'
 
 // Language code to name mapping
 const languageNames = {
@@ -44,6 +45,7 @@ const languageNames = {
   'et': 'Estonian',
   'lv': 'Latvian',
   'lt': 'Lithuanian',
+  'ur': 'Urdu',
 }
 
 export default function Archive({ onReady }) {
@@ -54,6 +56,7 @@ export default function Archive({ onReady }) {
   const [visibleCount, setVisibleCount] = useState(12)
   const [sortBy, setSortBy] = useState('default') // 'default', 'shortest', 'longest', 'most-played'
   const [languageFilter, setLanguageFilter] = useState('all') // 'all' or language code
+  const [tagFilter, setTagFilter] = useState('all') // 'all' or specific tag
   const [audioDurations, setAudioDurations] = useState({}) // Map of recording ID to actual audio duration
   const [playCounts, setPlayCounts] = useState({}) // Map of recording ID to play count
 
@@ -173,6 +176,18 @@ export default function Archive({ onReady }) {
     return Array.from(languages).sort()
   }, [currentItems])
 
+  const availableTags = useMemo(() => {
+    const tags = new Set()
+    currentItems.forEach(item => {
+      if (Array.isArray(item.tags)) {
+        item.tags.forEach((tag) => {
+          if (tag) tags.add(tag)
+        })
+      }
+    })
+    return Array.from(tags).sort((a, b) => a.localeCompare(b))
+  }, [currentItems])
+
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
     let items = [...currentItems]
@@ -180,6 +195,10 @@ export default function Archive({ onReady }) {
     // Apply language filter
     if (languageFilter !== 'all') {
       items = items.filter(item => item.detected_language === languageFilter)
+    }
+
+    if (tagFilter !== 'all') {
+      items = items.filter(item => Array.isArray(item.tags) && item.tags.includes(tagFilter))
     }
 
     // Apply filtering/sorting
@@ -301,14 +320,28 @@ export default function Archive({ onReady }) {
     }
 
     return items
-  }, [currentItems, languageFilter, sortBy, audioDurations, playCounts])
+  }, [currentItems, languageFilter, tagFilter, sortBy, audioDurations, playCounts])
 
   // Reset pagination and filters when switching tabs
   useEffect(() => {
     setVisibleCount(12)
     setSortBy('default')
     setLanguageFilter('all')
+    setTagFilter('all')
   }, [activeTab])
+
+  const handleTagClick = useCallback((tag) => {
+    if (!tag) return
+    setTagFilter(prev => (prev === tag ? 'all' : tag))
+    setVisibleCount(12)
+    try {
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    } catch (e) {
+      console.warn('Failed to scroll after tag selection:', e)
+    }
+  }, [])
 
   return (
     <div>
@@ -419,6 +452,33 @@ export default function Archive({ onReady }) {
               </div>
             )}
 
+            {/* Tag Filter Dropdown */}
+            {availableTags.length > 0 && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-sm font-medium opacity-80 whitespace-nowrap">Tag:</label>
+                <div className="relative flex-1 sm:flex-initial">
+                  <select
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                    className="w-full sm:w-auto px-4 py-2 pr-10 rounded-lg glass text-white text-sm focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all hover:neon-glow cursor-pointer appearance-none"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.75rem center',
+                      backgroundSize: '12px 12px'
+                    }}
+                  >
+                    <option value="all" className="bg-black/80 text-white">All tags</option>
+                    {availableTags.map(tag => (
+                      <option key={tag} value={tag} className="bg-black/80 text-white">
+                        #{tag}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Results count - Responsive */}
             <div className="text-sm opacity-60 w-full sm:w-auto sm:ml-auto text-center sm:text-left">
               {sortBy === 'most-played' ? (
@@ -465,6 +525,7 @@ export default function Archive({ onReady }) {
               <button
                 onClick={() => {
                   setLanguageFilter('all')
+                  setTagFilter('all')
                   setSortBy('default')
                 }}
                 className="px-4 py-2 rounded-lg glass hover:neon-glow transition-all text-sm"
@@ -483,6 +544,7 @@ export default function Archive({ onReady }) {
                     onPlay={() => incrementPlayCount(m._id)}
                     playCount={playCounts[m._id] || 0}
                     showPlayCount={sortBy === 'most-played'}
+                    onTagClick={handleTagClick}
                   />
                 ))}
               </div>
@@ -522,11 +584,12 @@ export default function Archive({ onReady }) {
           )}
         </div>
       )}
+      <ConsentSection className="mt-12" id="archive-consent" />
     </div>
   )
 }
 
-const ArchiveCard = memo(function ArchiveCard({ recording, index, onPlay, playCount = 0, showPlayCount = false }) {
+const ArchiveCard = memo(function ArchiveCard({ recording, index, onPlay, playCount = 0, showPlayCount = false, onTagClick }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [showTranscript, setShowTranscript] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -542,6 +605,11 @@ const ArchiveCard = memo(function ArchiveCard({ recording, index, onPlay, playCo
     const plain = srtToPlainText(recording.transcript)
     return plain ? plain.substring(0, 100) + '...' : 'No transcript available'
   }, [recording.transcript])
+
+  const tags = useMemo(() => {
+    if (!Array.isArray(recording.tags)) return []
+    return recording.tags.map((tag) => String(tag)).filter(Boolean)
+  }, [recording.tags])
 
   // Memoize formatted date
   const formattedDate = useMemo(() => {
@@ -707,6 +775,24 @@ const ArchiveCard = memo(function ArchiveCard({ recording, index, onPlay, playCo
           {transcriptPreview}
         </p>
 
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (onTagClick) onTagClick(tag)
+                }}
+                className="text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Phone number and transcript toggle */}
         <div className="flex items-center justify-between mt-3">
           {recording.phoneNumber && (
@@ -777,13 +863,16 @@ const ArchiveCard = memo(function ArchiveCard({ recording, index, onPlay, playCo
   )
 }, (prevProps, nextProps) => {
   // Custom comparison for React.memo - only re-render if recording data changes
+  const prevTagsKey = Array.isArray(prevProps.recording.tags) ? prevProps.recording.tags.join('|') : ''
+  const nextTagsKey = Array.isArray(nextProps.recording.tags) ? nextProps.recording.tags.join('|') : ''
   return (
     prevProps.recording._id === nextProps.recording._id &&
     prevProps.recording.title === nextProps.recording.title &&
     prevProps.index === nextProps.index &&
     prevProps.onPlay === nextProps.onPlay &&
     prevProps.playCount === nextProps.playCount &&
-    prevProps.showPlayCount === nextProps.showPlayCount
+    prevProps.showPlayCount === nextProps.showPlayCount &&
+    prevTagsKey === nextTagsKey
   )
 })
 

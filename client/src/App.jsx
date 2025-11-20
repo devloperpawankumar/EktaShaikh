@@ -113,7 +113,7 @@ export default function App() {
               onClick={() => navigate('/')}
               className="landing-heading-white font-extrabold tracking-tight leading-none text-[21px] md:text-[30px] md:mb-10 mb-4 cursor-pointer hover:opacity-80 transition-opacity"
             >
-              Invite The One You Can't Touch
+              Invite The One You Cannot Touch
             </h1>
             <nav className="w-full">
               <Tabs
