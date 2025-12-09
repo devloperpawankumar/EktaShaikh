@@ -1,5 +1,5 @@
 import React from 'react';
-import humsafarPreview from '../assests/images/humsafar.png';
+import humsafarPreview from '../assests/images/humsafar1.png';
 import Exhibit1 from '../assests/images/pic1.jpg';
 import Exhibit2 from '../assests/images/pic2.jpg';
 import Exhibit3 from '../assests/images/pic3.jpg';
@@ -98,14 +98,13 @@ export default function Home() {
           </div>
           <a
             href="https://humsafar.sandbox.library.columbia.edu/"
-          
-            className="group block overflow-hidden rounded-2xl shadow-2xl shadow-rose-500/20 ring-1 ring-white/10 transition hover:-translate-y-1"
+            className="group block max-w-3xl mx-auto overflow-hidden rounded-2xl shadow-2xl shadow-rose-500/20 ring-1 ring-white/10 transition hover:-translate-y-1"
           >
-            <div className="relative">
+            <div className="relative flex items-center justify-center bg-black/20 p-3">
               <img
                 src={humsafarPreview}
                 alt="Preview of the Humsafar website interface"
-                className="w-full rounded-2xl object-cover"
+                className="h-auto w-full max-h-[38rem] rounded-xl object-contain"
               />
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
                 <span className="rounded-full border border-white/40 px-5 py-2 text-xs uppercase tracking-[0.35em] text-white">
